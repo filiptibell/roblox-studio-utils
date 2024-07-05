@@ -1,0 +1,55 @@
+[package]
+name = "roblox-studio-utils"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+repository = "https://github.com/filiptibell/roblox-studio-utils"
+description = "Cross-platform library for interacting with Roblox Studio"
+readme = "README.md"
+keywords = ["rbx", "roblox"]
+categories = [
+    "command-line-interface",
+    "command-line-utilities",
+    "game-development",
+]
+
+[dependencies]
+dirs = "5.0"
+opener = "0.7"
+thiserror = "1.0"
+
+[dev-dependencies]
+anyhow = "1.0"
+
+[lib]
+path = "lib/lib.rs"
+
+[[example]]
+name = "open-file"
+path = "examples/open_file.rs"
+
+[[example]]
+name = "open-online-place"
+path = "examples/open_online_place.rs"
+
+[[example]]
+name = "start-client"
+path = "examples/start_client.rs"
+
+[[example]]
+name = "start-server-with-clients"
+path = "examples/start_server_with_clients.rs"
+
+[[example]]
+name = "start-server"
+path = "examples/start_server.rs"
+
+[lints.clippy]
+all = { level = "deny", priority = -3 }
+cargo = { level = "warn", priority = -2 }
+pedantic = { level = "warn", priority = -1 }
+
+module_inception = { level = "allow", priority = 1 }
+module_name_repetitions = { level = "allow", priority = 1 }
+multiple_crate_versions = { level = "allow", priority = 1 }
+unreadable_literal = { level = "allow", priority = 1 }
