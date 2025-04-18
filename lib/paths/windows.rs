@@ -8,17 +8,17 @@ use crate::{RobloxStudioError, RobloxStudioResult};
 use super::RobloxStudioPathsInner;
 
 use winreg::RegKey;
-use winreg::enums::*;
+use winreg::enums::HKEY_CURRENT_USER;
 
 impl RobloxStudioPathsInner {
     pub(super) fn new() -> RobloxStudioResult<Self> {
         let key = RegKey::predef(HKEY_CURRENT_USER)
             .open_subkey(r"Software\Roblox\RobloxStudio")
-            .map_err(|e| RobloxStudioError::Io(e))?;
+            .map_err(RobloxStudioError::Io)?;
 
         let content: String = key
             .get_value("ContentFolder")
-            .map_err(|e| RobloxStudioError::Io(e))?;
+            .map_err(RobloxStudioError::Io)?;
         let content = PathBuf::from(content);
 
         let root = content.parent().ok_or_else(|| {
