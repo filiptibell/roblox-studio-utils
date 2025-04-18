@@ -14,9 +14,9 @@ categories = [
 ]
 
 [dependencies]
-dirs = "5.0"
+dirs = "6.0"
 opener = "0.7"
-thiserror = "1.0"
+thiserror = "2.0"
 
 [dev-dependencies]
 anyhow = "1.0"
