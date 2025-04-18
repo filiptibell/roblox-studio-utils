@@ -28,7 +28,7 @@ impl RobloxStudioPathsInner {
             ))
         })?;
 
-        let plugins_user = dirs::local_data_dir()
+        let plugins_user = dirs::data_local_dir()
             .ok_or(RobloxStudioError::LocalDataDirMissing)?
             .join("Roblox")
             .join("Plugins");
@@ -70,7 +70,10 @@ fn find_paths_versioned(root: &Path, plugins_user: &Path) -> Option<RobloxStudio
 
     for entry in fs::read_dir(&versions).ok()? {
         let entry = entry.ok()?;
-        if entry.is_dir() {
+        let Ok(etype) = entry.file_type() else {
+            continue;
+        };
+        if etype.is_dir() {
             let dir = entry.path();
             let exe = dir.join("RobloxStudioBeta.exe");
             if exe.exists() {
