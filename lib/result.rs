@@ -6,6 +6,7 @@ use thiserror::Error;
     An error that may occur when interacting with Roblox Studio.
 */
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum RobloxStudioError {
     #[error("Unknown task: {0}")]
     UnknownTask(String),
