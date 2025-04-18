@@ -19,8 +19,6 @@ pub enum RobloxStudioError {
     PathCanonicalize(String),
     #[error("Failed to convert path to string: {0:?}")]
     PathToString(PathBuf),
-    #[error("Failed to open Roblox Studio: {0}")]
-    Opener(#[from] opener::OpenError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }

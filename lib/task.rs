@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::{ffi::OsString, fmt, str::FromStr};
 
 use crate::RobloxStudioError;
 
@@ -58,5 +58,11 @@ impl FromStr for RobloxStudioTask {
 impl fmt::Display for RobloxStudioTask {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.name())
+    }
+}
+
+impl From<RobloxStudioTask> for OsString {
+    fn from(value: RobloxStudioTask) -> Self {
+        value.to_string().into()
     }
 }

@@ -1,5 +1,8 @@
+use std::ffi::OsString;
+use std::process::{Command, Stdio};
 use std::{net::Ipv4Addr, path::Path};
 
+use crate::paths::RobloxStudioPaths;
 use crate::result::{RobloxStudioError, RobloxStudioResult};
 use crate::task::RobloxStudioTask;
 
@@ -12,7 +15,7 @@ const DEFAULT_SERVER_PORT: u16 = 50608;
 */
 #[derive(Debug, Clone)]
 pub struct RobloxStudioOpener {
-    args: Vec<(String, String)>,
+    args: Vec<OsString>,
     server_addr: Ipv4Addr,
     server_port: u16,
 }
@@ -24,14 +27,14 @@ impl RobloxStudioOpener {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            args: vec![(String::from("roblox-studio"), String::from("1"))],
+            args: Vec::new(),
             server_addr: DEFAULT_SERVER_ADDR,
             server_port: DEFAULT_SERVER_PORT,
         }
     }
 
     /**
-        Add an argument to the Roblox Studio opener.
+        Add a key-value argument pair to the Roblox Studio opener.
 
         This should typically not be used - try to use the more specific
         methods such as `edit_place` or `edit_file` instead when possible.
@@ -41,10 +44,11 @@ impl RobloxStudioOpener {
     #[allow(clippy::needless_pass_by_value)]
     pub fn with_arg<K, V>(mut self, key: K, value: V) -> Self
     where
-        K: ToString,
-        V: ToString,
+        K: Into<OsString>,
+        V: Into<OsString>,
     {
-        self.args.push((key.to_string(), value.to_string()));
+        self.args.push(key.into());
+        self.args.push(value.into());
         self
     }
 
@@ -54,10 +58,10 @@ impl RobloxStudioOpener {
     fn with_zeros(self) -> Self {
         // Necessary for some commands even though they are
         // unused - maybe these can be removed in the future?
-        self.with_arg("creatorType", "0")
-            .with_arg("creatorId", "0")
-            .with_arg("universeId", "0")
-            .with_arg("placeId", "0")
+        self.with_arg("-creatorType", "0")
+            .with_arg("-creatorId", "0")
+            .with_arg("-universeId", "0")
+            .with_arg("-placeId", "0")
     }
 
     /**
@@ -95,9 +99,9 @@ impl RobloxStudioOpener {
     */
     #[must_use]
     pub fn open_place(self, universe_id: u64, place_id: u64) -> Self {
-        self.with_arg("task", RobloxStudioTask::EditPlace)
-            .with_arg("universeId", universe_id)
-            .with_arg("placeId", place_id)
+        self.with_arg("-task", RobloxStudioTask::EditPlace)
+            .with_arg("-universeId", universe_id.to_string())
+            .with_arg("-placeId", place_id.to_string())
     }
 
     /**
@@ -122,8 +126,8 @@ impl RobloxStudioOpener {
             .to_str()
             .ok_or(RobloxStudioError::PathToString(file_path_full.clone()))?;
         Ok(self
-            .with_arg("task", RobloxStudioTask::EditFile)
-            .with_arg("localPlaceFile", file_path_str))
+            .with_arg("-task", RobloxStudioTask::EditFile)
+            .with_arg("-localPlaceFile", file_path_str))
     }
 
     /**
@@ -131,8 +135,6 @@ impl RobloxStudioOpener {
 
         This will copy the place file at the given `file_path`
         to the Roblox server file, and then start the server.
-
-        NOTE: This is a blocking operation.
 
         # Errors
 
@@ -158,7 +160,7 @@ impl RobloxStudioOpener {
         let server_addr = self.server_addr.to_string();
         let server_port = self.server_port.to_string();
         Ok(self
-            .with_arg("task", RobloxStudioTask::StartServer)
+            .with_arg("-task", RobloxStudioTask::StartServer)
             .with_arg("-server", server_addr)
             .with_arg("-port", server_port)
             .with_zeros())
@@ -182,7 +184,7 @@ impl RobloxStudioOpener {
     {
         Ok(self
             .start_server(file_path)?
-            .with_arg("numtestserverplayersuponstartup", num_clients))
+            .with_arg("-numtestserverplayersuponstartup", num_clients.to_string()))
     }
 
     /**
@@ -194,7 +196,7 @@ impl RobloxStudioOpener {
     pub fn start_client(self) -> Self {
         let server_addr = self.server_addr.to_string();
         let server_port = self.server_port.to_string();
-        self.with_arg("task", RobloxStudioTask::StartClient)
+        self.with_arg("-task", RobloxStudioTask::StartClient)
             .with_arg("-server", server_addr)
             .with_arg("-port", server_port)
             .with_zeros()
@@ -203,15 +205,30 @@ impl RobloxStudioOpener {
     /**
         Starts Roblox Studio with all of the given arguments.
 
-        NOTE: This is a blocking operation.
+        Note that this will not wait for Roblox Studio to actually
+        open the file/server/client - it only guarantees that the process
+        has been spawned and that it has received the necessary arguments.
 
         # Errors
 
-        - If Roblox Studio cannot be opened.
+        - If the Roblox Studio executable cannot be found.
     */
     pub fn run(self) -> RobloxStudioResult<()> {
-        let args = build_args_string(self.args);
-        opener::open(args)?;
+        let paths = RobloxStudioPaths::new()?;
+
+        let mut cmd = Command::new(paths.exe());
+        cmd.args(self.args);
+        cmd.stdin(Stdio::null());
+        cmd.stdout(Stdio::null());
+        cmd.stderr(Stdio::null());
+
+        // NOTE: Not waiting on the process here is intentional, we
+        // are only trying to open Roblox Studio, not get its output,
+        // and we intentionally don't want toolchain managers such as
+        // Rokit/Aftman/Foreman to kill and clean up this process either
+        #[allow(clippy::zombie_processes)]
+        cmd.spawn()?;
+
         Ok(())
     }
 }
@@ -220,11 +237,4 @@ impl Default for RobloxStudioOpener {
     fn default() -> Self {
         Self::new()
     }
-}
-
-fn build_args_string(args: Vec<(String, String)>) -> String {
-    args.into_iter()
-        .map(|(k, v)| format!("{k}:{v}"))
-        .collect::<Vec<_>>()
-        .join("+")
 }
