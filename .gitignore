@@ -14,3 +14,10 @@
 /**/out
 /**/target
 /**/staging
+
+# Test files
+
+/*.rbxl
+/*.rbxlx
+/*.rbxm
+/*.rbxmx
