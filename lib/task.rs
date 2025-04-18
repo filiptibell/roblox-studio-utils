@@ -63,6 +63,6 @@ impl fmt::Display for RobloxStudioTask {
 
 impl From<RobloxStudioTask> for OsString {
     fn from(value: RobloxStudioTask) -> Self {
-        value.to_string().into()
+        value.name().into()
     }
 }
