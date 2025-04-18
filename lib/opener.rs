@@ -1,6 +1,10 @@
-use std::ffi::OsString;
-use std::process::{Command, Stdio};
-use std::{net::Ipv4Addr, path::Path};
+use std::{
+    ffi::OsString,
+    fs,
+    net::Ipv4Addr,
+    path::Path,
+    process::{Command, Stdio},
+};
 
 use crate::paths::RobloxStudioPaths;
 use crate::result::{RobloxStudioError, RobloxStudioResult};
@@ -154,7 +158,7 @@ impl RobloxStudioOpener {
             .join("Roblox")
             .join("server.rbxl");
 
-        std::fs::copy(file_path_source, file_path_target)
+        fs::copy(file_path_source, file_path_target)
             .map_err(|e| RobloxStudioError::LocalDataDirCopyPlace(e.to_string()))?;
 
         let server_addr = self.server_addr.to_string();
