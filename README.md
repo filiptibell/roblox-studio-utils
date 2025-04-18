@@ -18,6 +18,17 @@
 
 <br/>
 
-Cross-platform Rust library for interacting with Roblox Studio - providing utilities for opening place files, starting local test server(s), and more.
+Cross-platform, almost zero-dependency Rust library for interacting with Roblox Studio.
 
-For a full list of examples, see the [examples](/examples/) directory.
+# Features
+
+The `roblox-studio-utils` crate contains functionality for:
+
+- Opening place files
+- Opening cloud places
+- Starting local test servers & clients
+- Finding the current Roblox Studio installation and relevant paths
+
+# Usage
+
+Please see the [examples](/examples/) directory for a comprehensive list of examples.

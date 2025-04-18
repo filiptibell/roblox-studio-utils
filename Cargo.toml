@@ -23,6 +23,10 @@ winreg = "0.55"
 path = "lib/lib.rs"
 
 [[example]]
+name = "find-paths"
+path = "examples/find_paths.rs"
+
+[[example]]
 name = "open-file"
 path = "examples/open_file.rs"
 
