@@ -3,10 +3,8 @@ use std::{net::Ipv4Addr, path::Path};
 use crate::result::{RobloxStudioError, RobloxStudioResult};
 use crate::task::RobloxStudioTask;
 
-// FUTURE: Maybe these can be made configurable, too?
-
-const SERVER_ADDR: Ipv4Addr = Ipv4Addr::LOCALHOST;
-const SERVER_PORT: u16 = 50608;
+const DEFAULT_SERVER_ADDR: Ipv4Addr = Ipv4Addr::LOCALHOST;
+const DEFAULT_SERVER_PORT: u16 = 50608;
 
 /**
     A wrapper around the `opener` crate to open Roblox Studio natively,
@@ -15,6 +13,8 @@ const SERVER_PORT: u16 = 50608;
 #[derive(Debug, Clone)]
 pub struct RobloxStudioOpener {
     args: Vec<(String, String)>,
+    server_addr: Ipv4Addr,
+    server_port: u16,
 }
 
 impl RobloxStudioOpener {
@@ -25,6 +25,8 @@ impl RobloxStudioOpener {
     pub fn new() -> Self {
         Self {
             args: vec![(String::from("roblox-studio"), String::from("1"))],
+            server_addr: DEFAULT_SERVER_ADDR,
+            server_port: DEFAULT_SERVER_PORT,
         }
     }
 
@@ -56,6 +58,34 @@ impl RobloxStudioOpener {
             .with_arg("creatorId", "0")
             .with_arg("universeId", "0")
             .with_arg("placeId", "0")
+    }
+
+    /**
+        Sets a custom server address to use with the `start_server`,
+        `start_server_with_place`, or `start_client` methods.
+
+        Defaults to localhost (`127.0.0.1`).
+    */
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn with_server_addr<A>(mut self, server_addr: A) -> Self
+    where
+        A: Into<Ipv4Addr>,
+    {
+        self.server_addr = server_addr.into();
+        self
+    }
+
+    /**
+        Sets a custom server port to use with the `start_server`,
+        `start_server_with_place`, or `start_client` methods.
+
+        Defaults to port `50608`.
+    */
+    #[must_use]
+    pub fn with_server_port(mut self, server_port: u16) -> Self {
+        self.server_port = server_port;
+        self
     }
 
     /**
@@ -125,10 +155,12 @@ impl RobloxStudioOpener {
         std::fs::copy(file_path_source, file_path_target)
             .map_err(|e| RobloxStudioError::LocalDataDirCopyPlace(e.to_string()))?;
 
+        let server_addr = self.server_addr.to_string();
+        let server_port = self.server_port.to_string();
         Ok(self
             .with_arg("task", RobloxStudioTask::StartServer)
-            .with_arg("-server", SERVER_ADDR)
-            .with_arg("-port", SERVER_PORT)
+            .with_arg("-server", server_addr)
+            .with_arg("-port", server_port)
             .with_zeros())
     }
 
@@ -160,9 +192,11 @@ impl RobloxStudioOpener {
     */
     #[must_use]
     pub fn start_client(self) -> Self {
+        let server_addr = self.server_addr.to_string();
+        let server_port = self.server_port.to_string();
         self.with_arg("task", RobloxStudioTask::StartClient)
-            .with_arg("-server", SERVER_ADDR)
-            .with_arg("-port", SERVER_PORT)
+            .with_arg("-server", server_addr)
+            .with_arg("-port", server_port)
             .with_zeros()
     }
 
