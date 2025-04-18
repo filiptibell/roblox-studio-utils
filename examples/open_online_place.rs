@@ -1,6 +1,6 @@
 use roblox_studio_utils::RobloxStudioOpener;
 
-pub fn main() -> anyhow::Result<()> {
+pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let universe_id: u64 = 123456789;
     let place_id: u64 = 234567890;
 

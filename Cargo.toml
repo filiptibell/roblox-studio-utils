@@ -19,9 +19,6 @@ dirs = "6.0"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
 
-[dev-dependencies]
-anyhow = "1.0"
-
 [lib]
 path = "lib/lib.rs"
 
