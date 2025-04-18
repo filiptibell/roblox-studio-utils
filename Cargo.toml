@@ -15,7 +15,6 @@ categories = [
 
 [dependencies]
 dirs = "6.0"
-thiserror = "2.0"
 
 [dev-dependencies]
 anyhow = "1.0"
