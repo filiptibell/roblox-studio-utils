@@ -9,6 +9,8 @@ use thiserror::Error;
 pub enum RobloxStudioError {
     #[error("Unknown task: {0}")]
     UnknownTask(String),
+    #[error("Failed to find user documents directory")]
+    UserDocumentsDirMissing,
     #[error("Failed to find local data directory")]
     LocalDataDirMissing,
     #[error("Failed to copy place file to local data directory: {0}")]
