@@ -30,7 +30,7 @@ impl fmt::Display for RobloxStudioError {
             }
             RobloxStudioError::PathCanonicalize(s) => write!(f, "Failed to canonicalize path: {s}"),
             RobloxStudioError::PathToString(p) => {
-                write!(f, "Failed to convert path to string: {p:?}")
+                write!(f, "Failed to convert path to string: {}", p.display())
             }
             RobloxStudioError::Io(e) => write!(f, "I/O error: {e}"),
         }
