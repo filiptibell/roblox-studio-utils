@@ -3,12 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use winreg::{RegKey, enums::HKEY_CURRENT_USER};
+
 use crate::{RobloxStudioError, RobloxStudioResult};
 
 use super::RobloxStudioPathsInner;
-
-use winreg::RegKey;
-use winreg::enums::HKEY_CURRENT_USER;
 
 impl RobloxStudioPathsInner {
     pub(super) fn new() -> RobloxStudioResult<Self> {
