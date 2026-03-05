@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::RobloxStudioResult;
+use crate::task::RobloxStudioTask;
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -41,6 +42,33 @@ impl RobloxStudioPaths {
     #[must_use]
     pub fn exe(&self) -> &Path {
         self.inner.exe.as_path()
+    }
+
+    /**
+        Returns the path to the Roblox Studio launcher executable,
+        if one is available.
+    */
+    #[must_use]
+    pub fn launcher(&self) -> Option<&Path> {
+        self.inner.launcher.as_deref()
+    }
+
+    /**
+        Returns the preferred executable path for the given task.
+    */
+    #[must_use]
+    pub(crate) fn exe_for_task(&self, task: Option<RobloxStudioTask>) -> &Path {
+        if cfg!(target_os = "windows")
+            && task.is_some_and(RobloxStudioTask::needs_launcher)
+            && self.inner.launcher.is_some()
+        {
+            self.inner
+                .launcher
+                .as_deref()
+                .expect("launcher path should exist")
+        } else {
+            self.exe()
+        }
     }
 
     /**
@@ -89,6 +117,7 @@ impl RobloxStudioPaths {
 #[derive(Debug, Clone)]
 struct RobloxStudioPathsInner {
     exe: PathBuf,
+    launcher: Option<PathBuf>,
     content: PathBuf,
     plugins_user: PathBuf,
     plugins_builtin: PathBuf,

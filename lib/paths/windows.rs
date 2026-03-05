@@ -52,6 +52,7 @@ fn find_paths_direct(
     if exe.exists() {
         Some(RobloxStudioPathsInner {
             exe,
+            launcher: find_launcher(root),
             content: content.to_path_buf(),
             plugins_user: plugins_user.to_path_buf(),
             plugins_builtin: root.join("BuiltInPlugins"),
@@ -78,6 +79,7 @@ fn find_paths_versioned(root: &Path, plugins_user: &Path) -> Option<RobloxStudio
             if exe.exists() {
                 return Some(RobloxStudioPathsInner {
                     exe,
+                    launcher: find_launcher(&dir),
                     content: dir.join("content"),
                     plugins_user: plugins_user.to_path_buf(),
                     plugins_builtin: dir.join("BuiltInPlugins"),
@@ -87,4 +89,9 @@ fn find_paths_versioned(root: &Path, plugins_user: &Path) -> Option<RobloxStudio
     }
 
     None
+}
+
+fn find_launcher(root: &Path) -> Option<PathBuf> {
+    let launcher = root.join("RobloxStudioLauncherBeta.exe");
+    launcher.exists().then_some(launcher)
 }

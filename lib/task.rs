@@ -15,6 +15,18 @@ pub enum RobloxStudioTask {
 
 impl RobloxStudioTask {
     /**
+        Certain tasks only work using the `RobloxStudioBetaLauncher`
+        executable on Windows, and fail with a permission error
+        when using the plain `RobloxStudioBeta` executable.
+
+        This method returns `true` when the launcher must be used.
+    */
+    #[must_use]
+    pub const fn needs_launcher(self) -> bool {
+        matches!(self, Self::EditPlace)
+    }
+
+    /**
         Tries to parse a task from a string.
 
         This is case insensitive and also accepts optional

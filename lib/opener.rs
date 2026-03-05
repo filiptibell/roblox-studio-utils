@@ -20,6 +20,7 @@ const DEFAULT_SERVER_PORT: u16 = 50608;
 #[derive(Debug, Clone)]
 pub struct RobloxStudioOpener {
     args: Vec<OsString>,
+    task: Option<RobloxStudioTask>,
     server_addr: Ipv4Addr,
     server_port: u16,
 }
@@ -32,6 +33,7 @@ impl RobloxStudioOpener {
     pub fn new() -> Self {
         Self {
             args: Vec::new(),
+            task: None,
             server_addr: DEFAULT_SERVER_ADDR,
             server_port: DEFAULT_SERVER_PORT,
         }
@@ -51,8 +53,15 @@ impl RobloxStudioOpener {
         K: Into<OsString>,
         V: Into<OsString>,
     {
-        self.args.push(key.into());
-        self.args.push(value.into());
+        let key: OsString = key.into();
+        let value: OsString = value.into();
+        if key == "-task"
+            && let Some(task_str) = value.to_str()
+        {
+            self.task = RobloxStudioTask::parse(task_str);
+        }
+        self.args.push(key);
+        self.args.push(value);
         self
     }
 
@@ -102,7 +111,8 @@ impl RobloxStudioOpener {
         This will open the place with the given `universe_id` and `place_id`.
     */
     #[must_use]
-    pub fn open_place(self, universe_id: u64, place_id: u64) -> Self {
+    pub fn open_place(mut self, universe_id: u64, place_id: u64) -> Self {
+        self.task = Some(RobloxStudioTask::EditPlace);
         self.with_arg("-task", RobloxStudioTask::EditPlace)
             .with_arg("-universeId", universe_id.to_string())
             .with_arg("-placeId", place_id.to_string())
@@ -118,10 +128,11 @@ impl RobloxStudioOpener {
         - If the given `file_path` cannot be canonicalized.
         - If the given `file_path` cannot be converted to a string.
     */
-    pub fn open_file<P>(self, file_path: P) -> RobloxStudioResult<Self>
+    pub fn open_file<P>(mut self, file_path: P) -> RobloxStudioResult<Self>
     where
         P: AsRef<Path>,
     {
+        self.task = Some(RobloxStudioTask::EditFile);
         let file_path_full = file_path
             .as_ref()
             .canonicalize()
@@ -145,10 +156,11 @@ impl RobloxStudioOpener {
         - If the local data directory cannot be found.
         - If the given place file cannot be copied to the local data directory.
     */
-    pub fn start_server<P>(self, file_path: P) -> RobloxStudioResult<Self>
+    pub fn start_server<P>(mut self, file_path: P) -> RobloxStudioResult<Self>
     where
         P: AsRef<Path>,
     {
+        self.task = Some(RobloxStudioTask::StartServer);
         let file_path_source = file_path
             .as_ref()
             .canonicalize()
@@ -197,7 +209,8 @@ impl RobloxStudioOpener {
         See `start_server` for more information.
     */
     #[must_use]
-    pub fn start_client(self) -> Self {
+    pub fn start_client(mut self) -> Self {
+        self.task = Some(RobloxStudioTask::StartClient);
         let server_addr = self.server_addr.to_string();
         let server_port = self.server_port.to_string();
         self.with_arg("-task", RobloxStudioTask::StartClient)
@@ -221,7 +234,7 @@ impl RobloxStudioOpener {
     pub fn run(self) -> RobloxStudioResult<()> {
         let paths = RobloxStudioPaths::new()?;
 
-        let mut cmd = Command::new(paths.exe());
+        let mut cmd = Command::new(paths.exe_for_task(self.task));
         cmd.args(self.args);
         cmd.stdin(Stdio::null());
         cmd.stdout(Stdio::null());

@@ -15,6 +15,7 @@ impl RobloxStudioPathsInner {
 
         Ok(Self {
             exe: root.join("MacOS").join("RobloxStudio"),
+            launcher: None,
             content: root.join("Resources").join("content"),
             plugins_user: document_dir.join("Roblox").join("Plugins"),
             plugins_builtin: root.join("Resources").join("BuiltInPlugins"),
