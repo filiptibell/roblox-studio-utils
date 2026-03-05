@@ -16,6 +16,9 @@ categories = [
 [dependencies]
 dirs = "6.0"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
 
@@ -55,3 +58,4 @@ module_inception = { level = "allow", priority = 1 }
 module_name_repetitions = { level = "allow", priority = 1 }
 multiple_crate_versions = { level = "allow", priority = 1 }
 unreadable_literal = { level = "allow", priority = 1 }
+unnecessary_wraps = { level = "allow", priority = 1 }

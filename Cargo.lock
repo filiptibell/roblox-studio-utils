@@ -102,6 +102,7 @@ name = "roblox-studio-utils"
 version = "0.2.0"
 dependencies = [
  "dirs",
+ "libc",
  "winreg",
 ]
 

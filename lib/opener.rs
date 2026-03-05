@@ -1,6 +1,6 @@
 use std::{
     ffi::OsString,
-    fs,
+    fs, io,
     net::Ipv4Addr,
     path::Path,
     process::{Command, Stdio},
@@ -14,7 +14,7 @@ const DEFAULT_SERVER_ADDR: Ipv4Addr = Ipv4Addr::LOCALHOST;
 const DEFAULT_SERVER_PORT: u16 = 50608;
 
 /**
-    A wrapper around the `opener` crate to open Roblox Studio natively,
+    A builder to open a Roblox Studio instance through the official binary,
     while also properly handling its CLI arguments and intricacies.
 */
 #[derive(Debug, Clone)]
@@ -217,6 +217,7 @@ impl RobloxStudioOpener {
 
         - If the Roblox Studio executable cannot be found.
     */
+    #[allow(clippy::zombie_processes)]
     pub fn run(self) -> RobloxStudioResult<()> {
         let paths = RobloxStudioPaths::new()?;
 
@@ -230,7 +231,8 @@ impl RobloxStudioOpener {
         // are only trying to open Roblox Studio, not get its output,
         // and we intentionally don't want toolchain managers such as
         // Rokit/Aftman/Foreman to kill and clean up this process either
-        #[allow(clippy::zombie_processes)]
+        configure_detached_spawn(&mut cmd)?;
+
         cmd.spawn()?;
 
         Ok(())
@@ -241,4 +243,48 @@ impl Default for RobloxStudioOpener {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[cfg(target_family = "unix")]
+fn configure_detached_spawn(cmd: &mut Command) -> io::Result<()> {
+    use std::os::unix::process::CommandExt;
+
+    // Move Studio into a separate session so short-lived wrappers
+    // and shell signals do not take it down with the parent process.
+    // SAFETY: The closure only calls async-signal-safe `setsid` and returns
+    // an OS error directly, which is the intended `pre_exec` usage.
+    unsafe {
+        cmd.pre_exec(|| {
+            if libc::setsid() == -1 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
+        });
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn configure_detached_spawn(cmd: &mut Command) -> io::Result<()> {
+    use std::os::windows::process::CommandExt;
+
+    // Windows process creation flags & job objects:
+    // https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
+    // https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
+    const DETACHED_PROCESS: u32 = 0x0000_0008;
+    const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+    const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
+
+    // Break away from short-lived wrappers on Windows and
+    // avoid tying Studio to the parent's console process group.
+    cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB);
+
+    Ok(())
+}
+
+#[cfg(not(any(target_family = "unix", target_os = "windows")))]
+fn configure_detached_spawn(_cmd: &mut Command) -> io::Result<()> {
+    Ok(())
 }
