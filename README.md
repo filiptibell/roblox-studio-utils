@@ -24,10 +24,10 @@ Cross-platform, almost zero-dependency Rust library for interacting with Roblox 
 
 The `roblox-studio-utils` crate contains functionality for:
 
+- Finding the current Roblox Studio installation and relevant paths
 - Opening place files
 - Opening cloud places
 - Starting local test servers & clients
-- Finding the current Roblox Studio installation and relevant paths
 
 # Usage
 
