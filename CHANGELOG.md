@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## `0.3.2` - March 15th, 2026
+
+### Fixed
+
+- Fixed Windows Studio launches failing under job-managed parent processes by retrying detached spawn without `CREATE_BREAKAWAY_FROM_JOB` when Windows denies that flag
+
 ## `0.3.1` - March 5th, 2026
 
 ### Fixed

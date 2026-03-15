@@ -233,22 +233,9 @@ impl RobloxStudioOpener {
     #[allow(clippy::zombie_processes)]
     pub fn run(self) -> RobloxStudioResult<()> {
         let paths = RobloxStudioPaths::new()?;
+        let exe = paths.exe_for_task(self.task);
 
-        let mut cmd = Command::new(paths.exe_for_task(self.task));
-        cmd.args(self.args);
-        cmd.stdin(Stdio::null());
-        cmd.stdout(Stdio::null());
-        cmd.stderr(Stdio::null());
-
-        /*
-            NOTE: Not waiting on the process here is intentional, we
-            are only trying to open Roblox Studio, not get its output,
-            and we intentionally don't want toolchain managers such as
-            Rokit/Aftman/Foreman to kill and clean up this process either
-        */
-        configure_detached_spawn(&mut cmd)?;
-
-        cmd.spawn()?;
+        spawn_studio_process(exe, &self.args)?;
 
         Ok(())
     }
@@ -258,6 +245,85 @@ impl Default for RobloxStudioOpener {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn create_studio_command(exe: &Path, args: &[OsString]) -> Command {
+    let mut cmd = Command::new(exe);
+    cmd.args(args);
+    cmd.stdin(Stdio::null());
+    cmd.stdout(Stdio::null());
+    cmd.stderr(Stdio::null());
+    cmd
+}
+
+#[cfg(not(target_os = "windows"))]
+#[allow(clippy::zombie_processes)]
+fn spawn_studio_process(exe: &Path, args: &[OsString]) -> RobloxStudioResult<()> {
+    let mut cmd = create_studio_command(exe, args);
+
+    /*
+        NOTE: Not waiting on the process here is intentional, we
+        are only trying to open Roblox Studio, not get its output,
+        and we intentionally don't want toolchain managers such as
+        Rokit/Aftman/Foreman to kill and clean up this process either
+    */
+    configure_detached_spawn(&mut cmd)?;
+
+    cmd.spawn()?;
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+#[allow(clippy::zombie_processes)]
+fn spawn_studio_process(exe: &Path, args: &[OsString]) -> RobloxStudioResult<()> {
+    /*
+        Windows process creation flags & job objects:
+
+        https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
+        https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
+    */
+
+    const DETACHED_PROCESS: u32 = 0x0000_0008;
+    const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+    const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
+
+    const WINDOWS_FLAGS_FULL: u32 =
+        DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB;
+    const WINDOWS_FLAGS_FALLBACK: u32 = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
+
+    /*
+        Break away from short-lived wrappers on Windows and
+        avoid tying Studio to the parent's console process group.
+
+        Some Windows parent processes run inside a job object that does not permit
+        `CREATE_BREAKAWAY_FROM_JOB`, which causes Studio launch to fail outright with
+        `ERROR_ACCESS_DENIED`. Retry without the breakaway flag so opening Studio still
+        works even when we cannot fully escape the parent job.
+    */
+    spawn_studio_process_with_flags(exe, args, WINDOWS_FLAGS_FULL).or_else(|error| match error {
+        RobloxStudioError::Io(io_error) if io_error.kind() == io::ErrorKind::PermissionDenied => {
+            spawn_studio_process_with_flags(exe, args, WINDOWS_FLAGS_FALLBACK)
+                .or_else(|_| spawn_studio_process_with_flags(exe, args, 0))
+        }
+        other => Err(other),
+    })
+}
+
+#[cfg(target_os = "windows")]
+#[allow(clippy::zombie_processes)]
+fn spawn_studio_process_with_flags(
+    exe: &Path,
+    args: &[OsString],
+    flags: u32,
+) -> RobloxStudioResult<()> {
+    let mut cmd = create_studio_command(exe, args);
+
+    configure_detached_spawn(&mut cmd, flags)?;
+
+    cmd.spawn()?;
+
+    Ok(())
 }
 
 #[cfg(target_family = "unix")]
@@ -285,24 +351,12 @@ fn configure_detached_spawn(cmd: &mut Command) -> io::Result<()> {
 }
 
 #[cfg(target_os = "windows")]
-fn configure_detached_spawn(cmd: &mut Command) -> io::Result<()> {
+fn configure_detached_spawn(cmd: &mut Command, flags: u32) -> io::Result<()> {
     use std::os::windows::process::CommandExt;
 
-    /*
-        Windows process creation flags & job objects:
-
-        https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
-        https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
-    */
-    const DETACHED_PROCESS: u32 = 0x0000_0008;
-    const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-    const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
-
-    /*
-        Break away from short-lived wrappers on Windows and
-        avoid tying Studio to the parent's console process group.
-    */
-    cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB);
+    if flags != 0 {
+        cmd.creation_flags(flags);
+    }
 
     Ok(())
 }
