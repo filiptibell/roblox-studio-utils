@@ -111,6 +111,42 @@ impl RobloxStudioPaths {
     pub fn built_in_plugins(&self) -> &Path {
         self.inner.plugins_builtin.as_path()
     }
+
+    /**
+        Returns the path to the current `GlobalSettings_<version>.xml`, the file Roblox Studio
+        stores its global settings in, if one is present.
+
+        The `<version>` suffix is a settings-schema version that Roblox increments over time (it has
+        been `_4`, `_8`, `_10`, `_13`, ...), so the highest-versioned file is returned rather than
+        assuming a fixed number.
+    */
+    #[must_use]
+    pub fn global_settings(&self) -> Option<PathBuf> {
+        let dir = self.inner.settings.as_ref()?;
+
+        let mut best: Option<(u32, PathBuf)> = None;
+        for entry in std::fs::read_dir(dir).ok()?.flatten() {
+            let file_name = entry.file_name();
+            let Some(name) = file_name.to_str() else {
+                continue;
+            };
+            let Some(version) = name
+                .strip_prefix("GlobalSettings_")
+                .and_then(|rest| rest.strip_suffix(".xml"))
+                .and_then(|version| version.parse::<u32>().ok())
+            else {
+                continue;
+            };
+            if best
+                .as_ref()
+                .is_none_or(|(best_version, _)| version > *best_version)
+            {
+                best = Some((version, entry.path()));
+            }
+        }
+
+        best.map(|(_, path)| path)
+    }
 }
 
 // Private inner struct to make RobloxStudioPaths cheaper to clone
@@ -121,6 +157,7 @@ struct RobloxStudioPathsInner {
     content: PathBuf,
     plugins_user: PathBuf,
     plugins_builtin: PathBuf,
+    settings: Option<PathBuf>,
 }
 
 impl From<RobloxStudioPathsInner> for RobloxStudioPaths {

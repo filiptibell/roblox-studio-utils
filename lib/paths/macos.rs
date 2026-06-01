@@ -19,6 +19,7 @@ impl RobloxStudioPathsInner {
             content: root.join("Resources").join("content"),
             plugins_user: document_dir.join("Roblox").join("Plugins"),
             plugins_builtin: root.join("Resources").join("BuiltInPlugins"),
+            settings: dirs::home_dir().map(|home| home.join("Library").join("Roblox")),
         })
     }
 }

@@ -27,13 +27,12 @@ impl RobloxStudioPathsInner {
             ))
         })?;
 
-        let plugins_user = dirs::data_local_dir()
-            .ok_or(RobloxStudioError::LocalDataDirMissing)?
-            .join("Roblox")
-            .join("Plugins");
+        let local_data = dirs::data_local_dir().ok_or(RobloxStudioError::LocalDataDirMissing)?;
+        let plugins_user = local_data.join("Roblox").join("Plugins");
+        let settings = local_data.join("Roblox");
 
-        find_paths_direct(root, &content, &plugins_user)
-            .or_else(|| find_paths_versioned(root, &plugins_user))
+        find_paths_direct(root, &content, &plugins_user, &settings)
+            .or_else(|| find_paths_versioned(root, &plugins_user, &settings))
             .ok_or_else(|| {
                 RobloxStudioError::Io(io::Error::new(
                     io::ErrorKind::NotFound,
@@ -47,6 +46,7 @@ fn find_paths_direct(
     root: &Path,
     content: &Path,
     plugins_user: &Path,
+    settings: &Path,
 ) -> Option<RobloxStudioPathsInner> {
     let exe = root.join("RobloxStudioBeta.exe");
     if exe.exists() {
@@ -56,13 +56,18 @@ fn find_paths_direct(
             content: content.to_path_buf(),
             plugins_user: plugins_user.to_path_buf(),
             plugins_builtin: root.join("BuiltInPlugins"),
+            settings: Some(settings.to_path_buf()),
         })
     } else {
         None
     }
 }
 
-fn find_paths_versioned(root: &Path, plugins_user: &Path) -> Option<RobloxStudioPathsInner> {
+fn find_paths_versioned(
+    root: &Path,
+    plugins_user: &Path,
+    settings: &Path,
+) -> Option<RobloxStudioPathsInner> {
     let versions = root.join("Versions");
     if !versions.is_dir() {
         return None;
@@ -83,6 +88,7 @@ fn find_paths_versioned(root: &Path, plugins_user: &Path) -> Option<RobloxStudio
                     content: dir.join("content"),
                     plugins_user: plugins_user.to_path_buf(),
                     plugins_builtin: dir.join("BuiltInPlugins"),
+                    settings: Some(settings.to_path_buf()),
                 });
             }
         }
