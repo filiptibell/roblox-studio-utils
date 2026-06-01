@@ -24,6 +24,7 @@ struct DoctorReport {
     content: Option<PathStatus>,
     built_in_plugins: Option<PathStatus>,
     user_plugins: Option<PathStatus>,
+    global_settings: Option<PathStatus>,
     error: Option<String>,
 }
 
@@ -41,6 +42,7 @@ impl DoctorCommand {
                 let content = PathStatus::from_path(paths.content());
                 let built_in_plugins = PathStatus::from_path(paths.built_in_plugins());
                 let user_plugins = PathStatus::from_path(paths.user_plugins());
+                let global_settings = paths.global_settings().map(PathStatus::from_path); // absent until first studio run
                 let ok = executable.exists && content.exists && built_in_plugins.exists;
 
                 DoctorReport {
@@ -51,6 +53,7 @@ impl DoctorCommand {
                     content: Some(content),
                     built_in_plugins: Some(built_in_plugins),
                     user_plugins: Some(user_plugins),
+                    global_settings,
                     error: None,
                 }
             }
@@ -62,6 +65,7 @@ impl DoctorCommand {
                 content: None,
                 built_in_plugins: None,
                 user_plugins: None,
+                global_settings: None,
                 error: Some(error.to_string()),
             },
         };
@@ -89,6 +93,9 @@ impl DoctorCommand {
             if let Some(user_plugins) = &report.user_plugins {
                 print_path_status("User Plugins", user_plugins);
             }
+            if let Some(global_settings) = &report.global_settings {
+                print_path_status("Global Settings", global_settings);
+            }
             if let Some(error) = &report.error {
                 println!("- Error:            {error}");
             }
@@ -99,7 +106,8 @@ impl DoctorCommand {
 }
 
 impl PathStatus {
-    fn from_path(path: &Path) -> Self {
+    fn from_path<P: AsRef<Path>>(path: P) -> Self {
+        let path = path.as_ref();
         Self {
             path: path.display().to_string(),
             exists: path.exists(),

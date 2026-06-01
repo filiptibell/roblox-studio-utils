@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use winreg::{RegKey, enums::HKEY_CURRENT_USER};
+use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 
 use crate::{RobloxStudioError, RobloxStudioResult};
 
