@@ -101,3 +101,19 @@ fn find_launcher(root: &Path) -> Option<PathBuf> {
     let launcher = root.join("RobloxStudioLauncherBeta.exe");
     launcher.exists().then_some(launcher)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+
+    use crate::{RobloxStudioError, RobloxStudioPaths};
+
+    #[test]
+    fn new_checks_that_studio_is_installed() {
+        match RobloxStudioPaths::new() {
+            Ok(paths) => assert!(paths.exe().exists()),
+            Err(RobloxStudioError::Io(e)) => assert_eq!(e.kind(), io::ErrorKind::NotFound),
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+}

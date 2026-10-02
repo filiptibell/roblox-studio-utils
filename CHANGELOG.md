@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `RobloxStudioPaths::new` panicking on Linux - it now returns `RobloxStudioError::UnsupportedPlatform` instead
 - Fixed compilation on platforms other than Windows, macOS, and Linux, which now also return `RobloxStudioError::UnsupportedPlatform`
+- Fixed `RobloxStudioPaths::new` succeeding on macOS even when Roblox Studio is not installed - it now returns an error, same as on Windows
 
 ## `0.3.3` - June 1st, 2026
 
