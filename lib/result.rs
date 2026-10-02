@@ -1,4 +1,4 @@
-use std::{error::Error, fmt, io, path::PathBuf};
+use std::{env, error::Error, fmt, io, path::PathBuf};
 
 /**
     An error that may occur when interacting with Roblox Studio.
@@ -6,6 +6,7 @@ use std::{error::Error, fmt, io, path::PathBuf};
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum RobloxStudioError {
+    UnsupportedPlatform,
     UnknownTask(String),
     UserDocumentsDirMissing,
     LocalDataDirMissing,
@@ -18,6 +19,9 @@ pub enum RobloxStudioError {
 impl fmt::Display for RobloxStudioError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            RobloxStudioError::UnsupportedPlatform => {
+                write!(f, "unsupported platform: {}", env::consts::OS)
+            }
             RobloxStudioError::UnknownTask(s) => write!(f, "unknown task: {s}"),
             RobloxStudioError::UserDocumentsDirMissing => {
                 write!(f, "failed to find user documents directory")

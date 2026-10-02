@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `with_output_file` and `quit_after_execution` methods to `RobloxStudioOpener` for use with the `RunScript` task
 - Added a new `spawn` method to `RobloxStudioOpener` that returns a handle to the Roblox Studio process, instead of detaching it
 - Added a `run` command to the CLI for running Luau scripts in Roblox Studio
+- Added a new `UnsupportedPlatform` variant to `RobloxStudioError`
+
+### Fixed
+
+- Fixed `RobloxStudioPaths::new` panicking on Linux - it now returns `RobloxStudioError::UnsupportedPlatform` instead
+- Fixed compilation on platforms other than Windows, macOS, and Linux, which now also return `RobloxStudioError::UnsupportedPlatform`
 
 ## `0.3.3` - June 1st, 2026
 

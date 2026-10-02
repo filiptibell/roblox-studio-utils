@@ -344,6 +344,7 @@ impl RobloxStudioOpener {
         # Errors
 
         - If the Roblox Studio executable cannot be found.
+        - If Roblox Studio is not supported on the current platform.
     */
     #[allow(clippy::zombie_processes)]
     pub fn run(self) -> RobloxStudioResult<()> {
@@ -369,6 +370,7 @@ impl RobloxStudioOpener {
         # Errors
 
         - If the Roblox Studio executable cannot be found.
+        - If Roblox Studio is not supported on the current platform.
     */
     pub fn spawn(self) -> RobloxStudioResult<Child> {
         let paths = RobloxStudioPaths::new()?;
