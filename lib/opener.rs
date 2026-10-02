@@ -43,7 +43,7 @@ impl RobloxStudioOpener {
         Add a key-value argument pair to the Roblox Studio opener.
 
         This should typically not be used - try to use the more specific
-        methods such as `edit_place` or `edit_file` instead when possible.
+        methods such as `open_place` or `open_file` instead when possible.
     */
     #[must_use]
     #[doc(hidden)]
@@ -67,8 +67,13 @@ impl RobloxStudioOpener {
 
     /**
         Add a flag argument, which has no value, to the Roblox Studio opener.
+
+        This should typically not be used - try to use the more specific
+        methods such as `open_place` or `open_file` instead when possible.
     */
-    fn with_flag<K>(mut self, key: K) -> Self
+    #[must_use]
+    #[doc(hidden)]
+    pub fn with_flag<K>(mut self, key: K) -> Self
     where
         K: Into<OsString>,
     {
@@ -107,7 +112,7 @@ impl RobloxStudioOpener {
 
     /**
         Sets a custom server address to use with the `start_server`,
-        `start_server_with_place`, or `start_client` methods.
+        `start_server_with_clients`, or `start_client` methods.
 
         Defaults to localhost (`127.0.0.1`).
     */
@@ -123,7 +128,7 @@ impl RobloxStudioOpener {
 
     /**
         Sets a custom server port to use with the `start_server`,
-        `start_server_with_place`, or `start_client` methods.
+        `start_server_with_clients`, or `start_client` methods.
 
         Defaults to port `50608`.
     */
@@ -170,11 +175,13 @@ impl RobloxStudioOpener {
     /**
         Start a server in Roblox Studio with the given place file.
 
-        This will copy the place file at the given `file_path`
-        to the Roblox server file, and then start the server.
+        This will copy the place file at the given `file_path` to the Roblox
+        server file right away, and the server starts when `run` or `spawn`
+        is called.
 
         # Errors
 
+        - If the given `file_path` cannot be canonicalized.
         - If the local data directory cannot be found.
         - If the given place file cannot be copied to the local data directory.
     */
@@ -344,16 +351,18 @@ impl RobloxStudioOpener {
     }
 
     /**
-        Starts Roblox Studio with all of the given arguments.
+        Starts Roblox Studio with all of the given arguments,
+        as a process that is detached from the current process.
 
-        Note that this will not wait for Roblox Studio to actually
-        open the file/server/client - it only guarantees that the process
-        has been spawned and that it has received the necessary arguments.
+        Note that this will not wait for Roblox Studio to actually open the
+        place/file/server/client or run the script - it only guarantees that the
+        process has been spawned and that it has received the necessary arguments.
 
         # Errors
 
         - If the Roblox Studio executable cannot be found.
         - If Roblox Studio is not supported on the current platform.
+        - If the Roblox Studio process cannot be spawned.
     */
     #[allow(clippy::zombie_processes)]
     pub fn run(self) -> RobloxStudioResult<()> {
@@ -380,6 +389,7 @@ impl RobloxStudioOpener {
 
         - If the Roblox Studio executable cannot be found.
         - If Roblox Studio is not supported on the current platform.
+        - If the Roblox Studio process cannot be spawned.
     */
     pub fn spawn(self) -> RobloxStudioResult<Child> {
         let paths = RobloxStudioPaths::new()?;

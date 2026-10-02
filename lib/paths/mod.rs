@@ -14,8 +14,10 @@ mod unsupported;
 mod windows;
 
 /**
-    References to discovered, validated paths to the current
-    Roblox Studio executable, content, and plugins directories.
+    References to discovered paths to the current Roblox Studio
+    executable, content, plugins, and settings directories.
+
+    The executable is guaranteed to exist.
 
     Can be cheaply cloned and shared between threads.
 */
@@ -32,6 +34,7 @@ impl RobloxStudioPaths {
 
         - If Roblox Studio is not installed.
         - If Roblox Studio is not supported on the current platform.
+        - If the user documents directory (macOS) or local data directory (Windows) cannot be found.
     */
     pub fn new() -> RobloxStudioResult<Self> {
         RobloxStudioPathsInner::new().map(Self::from)
@@ -105,8 +108,8 @@ impl RobloxStudioPaths {
     /**
         Returns the path to the Roblox Studio **built-in plugins** directory.
 
-        These plugins are bundled with Roblox Studio itself, and the directory is guaranteed
-        to exist unlike the user plugins directory ([`RobloxStudioPaths::user_plugins`]).
+        These plugins are bundled with Roblox Studio itself, so this directory is part of the
+        installation, unlike the user plugins directory ([`RobloxStudioPaths::user_plugins`]).
     */
     #[must_use]
     pub fn built_in_plugins(&self) -> &Path {
