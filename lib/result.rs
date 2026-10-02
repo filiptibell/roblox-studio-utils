@@ -32,7 +32,7 @@ impl fmt::Display for RobloxStudioError {
             RobloxStudioError::PathToString(p) => {
                 write!(f, "failed to convert path to string: {}", p.display())
             }
-            RobloxStudioError::Io(e) => write!(f, "i/O error: {e}"),
+            RobloxStudioError::Io(e) => write!(f, "io error: {e}"),
         }
     }
 }
