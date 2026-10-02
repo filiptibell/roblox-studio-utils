@@ -2,8 +2,8 @@ use std::{
     ffi::OsString,
     fs, io,
     net::Ipv4Addr,
-    path::Path,
-    process::{Command, Stdio},
+    path::{self, Path},
+    process::{Child, Command, Stdio},
 };
 
 use crate::paths::RobloxStudioPaths;
@@ -62,6 +62,17 @@ impl RobloxStudioOpener {
         }
         self.args.push(key);
         self.args.push(value);
+        self
+    }
+
+    /**
+        Add a flag argument, which has no value, to the Roblox Studio opener.
+    */
+    fn with_flag<K>(mut self, key: K) -> Self
+    where
+        K: Into<OsString>,
+    {
+        self.args.push(key.into());
         self
     }
 
@@ -133,13 +144,7 @@ impl RobloxStudioOpener {
         P: AsRef<Path>,
     {
         self.task = Some(RobloxStudioTask::EditFile);
-        let file_path_full = file_path
-            .as_ref()
-            .canonicalize()
-            .map_err(|e| RobloxStudioError::PathCanonicalize(e.to_string()))?;
-        let file_path_str = file_path_full
-            .to_str()
-            .ok_or(RobloxStudioError::PathToString(file_path_full.clone()))?;
+        let file_path_str = canonicalize_to_string(file_path.as_ref())?;
         Ok(self
             .with_arg("-task", RobloxStudioTask::EditFile)
             .with_arg("-localPlaceFile", file_path_str))
@@ -220,6 +225,116 @@ impl RobloxStudioOpener {
     }
 
     /**
+        Run a Luau script in the default baseplate template in Roblox Studio.
+
+        The script runs after the place has loaded, at the same
+        permission level as the Roblox Studio command bar.
+
+        # Errors
+
+        - If the given `script_path` cannot be canonicalized.
+        - If the given `script_path` cannot be converted to a string.
+    */
+    pub fn run_script<S>(mut self, script_path: S) -> RobloxStudioResult<Self>
+    where
+        S: AsRef<Path>,
+    {
+        self.task = Some(RobloxStudioTask::RunScript);
+        let script_path_str = canonicalize_to_string(script_path.as_ref())?;
+        Ok(self
+            .with_arg("-task", RobloxStudioTask::RunScript)
+            .with_arg("-runScriptFile", script_path_str))
+    }
+
+    /**
+        Run a Luau script in an online place in Roblox Studio.
+
+        This will open the place with the given `universe_id` and `place_id`,
+        and run the script after the place has loaded.
+
+        See `run_script` for more information.
+
+        # Errors
+
+        - If the given `script_path` cannot be canonicalized.
+        - If the given `script_path` cannot be converted to a string.
+    */
+    pub fn run_script_in_place<S>(
+        self,
+        universe_id: u64,
+        place_id: u64,
+        script_path: S,
+    ) -> RobloxStudioResult<Self>
+    where
+        S: AsRef<Path>,
+    {
+        Ok(self
+            .run_script(script_path)?
+            .with_arg("-universeId", universe_id.to_string())
+            .with_arg("-placeId", place_id.to_string()))
+    }
+
+    /**
+        Run a Luau script in a local place file in Roblox Studio.
+
+        This will open the place file at the given `file_path`,
+        and run the script after the place has loaded.
+
+        See `run_script` for more information.
+
+        # Errors
+
+        - If the given `file_path` or `script_path` cannot be canonicalized.
+        - If the given `file_path` or `script_path` cannot be converted to a string.
+    */
+    pub fn run_script_in_file<P, S>(self, file_path: P, script_path: S) -> RobloxStudioResult<Self>
+    where
+        P: AsRef<Path>,
+        S: AsRef<Path>,
+    {
+        let file_path_str = canonicalize_to_string(file_path.as_ref())?;
+        Ok(self
+            .run_script(script_path)?
+            .with_arg("-localPlaceFile", file_path_str))
+    }
+
+    /**
+        Sets a file that the output of a script is written to, when used
+        together with `run_script`, `run_script_in_place`, or `run_script_in_file`.
+
+        The file does not need to exist. Roblox Studio writes to the file when
+        it closes, so this is mostly useful together with `quit_after_execution`.
+
+        # Errors
+
+        - If the given `output_path` cannot be made absolute.
+        - If the given `output_path` cannot be converted to a string.
+    */
+    pub fn with_output_file<P>(self, output_path: P) -> RobloxStudioResult<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let output_path_full = path::absolute(output_path.as_ref())?;
+        let output_path_str = output_path_full
+            .to_str()
+            .ok_or_else(|| RobloxStudioError::PathToString(output_path_full.clone()))?
+            .to_string();
+        Ok(self.with_arg("-outputFile", output_path_str))
+    }
+
+    /**
+        Makes Roblox Studio close after a script has finished running, when used
+        together with `run_script`, `run_script_in_place`, or `run_script_in_file`.
+
+        Note that Roblox Studio exits successfully even if the script raises an error.
+        Use `with_output_file` to read the output of the script, including any errors.
+    */
+    #[must_use]
+    pub fn quit_after_execution(self) -> Self {
+        self.with_flag("-quitAfterExecution")
+    }
+
+    /**
         Starts Roblox Studio with all of the given arguments.
 
         Note that this will not wait for Roblox Studio to actually
@@ -239,12 +354,46 @@ impl RobloxStudioOpener {
 
         Ok(())
     }
+
+    /**
+        Starts Roblox Studio with all of the given arguments,
+        and returns a handle to the Roblox Studio process.
+
+        Unlike `run`, the process is not detached from the current process.
+        The caller can wait for it to exit, or kill it, using the returned
+        handle. This is mostly useful together with `quit_after_execution`.
+
+        Note that on Windows, tasks that need the Roblox Studio launcher, such as
+        `EditPlace`, return a handle to the launcher process instead of Roblox Studio.
+
+        # Errors
+
+        - If the Roblox Studio executable cannot be found.
+    */
+    pub fn spawn(self) -> RobloxStudioResult<Child> {
+        let paths = RobloxStudioPaths::new()?;
+        let exe = paths.exe_for_task(self.task);
+
+        let child = create_studio_command(exe, &self.args).spawn()?;
+
+        Ok(child)
+    }
 }
 
 impl Default for RobloxStudioOpener {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn canonicalize_to_string(path: &Path) -> RobloxStudioResult<String> {
+    let path_full = path
+        .canonicalize()
+        .map_err(|e| RobloxStudioError::PathCanonicalize(e.to_string()))?;
+    let path_str = path_full
+        .to_str()
+        .ok_or_else(|| RobloxStudioError::PathToString(path_full.clone()))?;
+    Ok(path_str.to_string())
 }
 
 fn create_studio_command(exe: &Path, args: &[OsString]) -> Command {

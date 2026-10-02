@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added support for the `RunScript` task, through the new `run_script`, `run_script_in_place`, and `run_script_in_file` methods on `RobloxStudioOpener`
+- Added the `with_output_file` and `quit_after_execution` methods to `RobloxStudioOpener` for use with the `RunScript` task
+- Added a new `spawn` method to `RobloxStudioOpener` that returns a handle to the Roblox Studio process, instead of detaching it
+- Added a `run` command to the CLI for running Luau scripts in Roblox Studio
+
 ## `0.3.3` - June 1st, 2026
 
 ### Added

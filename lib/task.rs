@@ -11,6 +11,7 @@ pub enum RobloxStudioTask {
     EditFile,
     StartServer,
     StartClient,
+    RunScript,
 }
 
 impl RobloxStudioTask {
@@ -39,6 +40,7 @@ impl RobloxStudioTask {
             "editfile" | "edit-file" | "edit_file" => Some(Self::EditFile),
             "startserver" | "start-server" | "start_server" => Some(Self::StartServer),
             "startclient" | "start-client" | "start_client" => Some(Self::StartClient),
+            "runscript" | "run-script" | "run_script" => Some(Self::RunScript),
             _ => None,
         }
     }
@@ -56,6 +58,7 @@ impl RobloxStudioTask {
             Self::EditFile => "EditFile",
             Self::StartServer => "StartServer",
             Self::StartClient => "StartClient",
+            Self::RunScript => "RunScript",
         }
     }
 }

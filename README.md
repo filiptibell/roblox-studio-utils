@@ -28,6 +28,7 @@ The `roblox-studio-utils` crate contains functionality for:
 - Opening place files
 - Opening cloud places
 - Starting local test servers & clients
+- Running Luau scripts in places
 
 # Usage
 

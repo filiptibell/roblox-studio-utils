@@ -51,6 +51,10 @@ name = "open-online-place"
 path = "examples/open_online_place.rs"
 
 [[example]]
+name = "run-script"
+path = "examples/run_script.rs"
+
+[[example]]
 name = "start-client"
 path = "examples/start_client.rs"
 
