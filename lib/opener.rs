@@ -89,6 +89,23 @@ impl RobloxStudioOpener {
     }
 
     /**
+        Returns all arguments to start Roblox Studio with.
+
+        The server address and port are added here, instead of in `start_server`
+        and `start_client`, so that the order of method calls does not matter.
+    */
+    fn launch_args(&self) -> Vec<OsString> {
+        let mut args = self.args.clone();
+        if self.task.is_some_and(RobloxStudioTask::uses_server) {
+            args.push(OsString::from("-server"));
+            args.push(OsString::from(self.server_addr.to_string()));
+            args.push(OsString::from("-port"));
+            args.push(OsString::from(self.server_port.to_string()));
+        }
+        args
+    }
+
+    /**
         Sets a custom server address to use with the `start_server`,
         `start_server_with_place`, or `start_client` methods.
 
@@ -178,12 +195,8 @@ impl RobloxStudioOpener {
         fs::copy(file_path_source, file_path_target)
             .map_err(|e| RobloxStudioError::LocalDataDirCopyPlace(e.to_string()))?;
 
-        let server_addr = self.server_addr.to_string();
-        let server_port = self.server_port.to_string();
         Ok(self
             .with_arg("-task", RobloxStudioTask::StartServer)
-            .with_arg("-server", server_addr)
-            .with_arg("-port", server_port)
             .with_zeros())
     }
 
@@ -216,11 +229,7 @@ impl RobloxStudioOpener {
     #[must_use]
     pub fn start_client(mut self) -> Self {
         self.task = Some(RobloxStudioTask::StartClient);
-        let server_addr = self.server_addr.to_string();
-        let server_port = self.server_port.to_string();
         self.with_arg("-task", RobloxStudioTask::StartClient)
-            .with_arg("-server", server_addr)
-            .with_arg("-port", server_port)
             .with_zeros()
     }
 
@@ -351,7 +360,7 @@ impl RobloxStudioOpener {
         let paths = RobloxStudioPaths::new()?;
         let exe = paths.exe_for_task(self.task);
 
-        spawn_studio_process(exe, &self.args)?;
+        spawn_studio_process(exe, &self.launch_args())?;
 
         Ok(())
     }
@@ -376,7 +385,7 @@ impl RobloxStudioOpener {
         let paths = RobloxStudioPaths::new()?;
         let exe = paths.exe_for_task(self.task);
 
-        let child = create_studio_command(exe, &self.args).spawn()?;
+        let child = create_studio_command(exe, &self.launch_args()).spawn()?;
 
         Ok(child)
     }

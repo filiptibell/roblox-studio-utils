@@ -28,6 +28,17 @@ impl RobloxStudioTask {
     }
 
     /**
+        Certain tasks start, or connect to, a local test server,
+        and need to be given a server address and port.
+
+        This method returns `true` when the task uses a server.
+    */
+    #[must_use]
+    pub const fn uses_server(self) -> bool {
+        matches!(self, Self::StartServer | Self::StartClient)
+    }
+
+    /**
         Tries to parse a task from a string.
 
         This is case insensitive and also accepts optional
