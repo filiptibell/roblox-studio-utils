@@ -18,21 +18,21 @@ pub enum RobloxStudioError {
 impl fmt::Display for RobloxStudioError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RobloxStudioError::UnknownTask(s) => write!(f, "Unknown task: {s}"),
+            RobloxStudioError::UnknownTask(s) => write!(f, "unknown task: {s}"),
             RobloxStudioError::UserDocumentsDirMissing => {
-                write!(f, "Failed to find user documents directory")
+                write!(f, "failed to find user documents directory")
             }
             RobloxStudioError::LocalDataDirMissing => {
-                write!(f, "Failed to find local data directory")
+                write!(f, "failed to find local data directory")
             }
             RobloxStudioError::LocalDataDirCopyPlace(s) => {
-                write!(f, "Failed to copy place file to local data directory: {s}")
+                write!(f, "failed to copy place file to local data directory: {s}")
             }
-            RobloxStudioError::PathCanonicalize(s) => write!(f, "Failed to canonicalize path: {s}"),
+            RobloxStudioError::PathCanonicalize(s) => write!(f, "failed to canonicalize path: {s}"),
             RobloxStudioError::PathToString(p) => {
-                write!(f, "Failed to convert path to string: {}", p.display())
+                write!(f, "failed to convert path to string: {}", p.display())
             }
-            RobloxStudioError::Io(e) => write!(f, "I/O error: {e}"),
+            RobloxStudioError::Io(e) => write!(f, "i/O error: {e}"),
         }
     }
 }
