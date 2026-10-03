@@ -8,6 +8,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+This release adds a background mode for the script running capabilities added in version `0.4.0`. It has been well-tested on macOS and does not yet work on Windows.
+
+### Breaking Changes
+
+- `RobloxStudioOpener::spawn` now returns a `RobloxStudioProcess` instead of a `std::process::Child`, since Roblox Studio is no longer a "normal" child process when opened in the background.
+
+### Added
+
+- Added `in_background` to `RobloxStudioOpener`, for running scripts in Roblox Studio without it ever showing a window or stealing focus. Currently only supported on macOS.
+- Added `wait_timeout` and `stop` to `RobloxStudioProcess`, so that a script that never finishes can no longer leave Roblox Studio running forever.
+- Added `--background` and `--timeout` options to the CLI.
+
 ## `0.4.0` - October 3rd, 2026
 
 ### Added
