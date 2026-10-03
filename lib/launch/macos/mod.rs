@@ -73,8 +73,8 @@ fn signal(pid: libc::pid_t, signal: libc::c_int) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use std::{
-        process::{Child, Command},
-        thread,
+        io::{BufRead, BufReader},
+        process::{Child, Command, Stdio},
         time::{Duration, Instant},
     };
 
@@ -85,12 +85,16 @@ mod tests {
     }
 
     fn ignores_quit() -> Child {
-        let child = Command::new("sh")
-            .args(["-c", "trap '' TERM; exec sleep 60"])
+        let mut child = Command::new("sh")
+            .args(["-c", "trap '' TERM; echo; exec sleep 60"])
+            .stdout(Stdio::piped())
             .spawn()
             .unwrap();
-        // Give the shell time to ignore the signal before it is sent
-        thread::sleep(Duration::from_millis(300));
+        // Wait for the shell to ignore the signal, however long it takes to start
+        let stdout = child.stdout.take().unwrap();
+        BufReader::new(stdout)
+            .read_line(&mut String::new())
+            .unwrap();
         child
     }
 
