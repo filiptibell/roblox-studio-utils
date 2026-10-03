@@ -22,6 +22,10 @@ This release adds a background mode for the script running capabilities added in
 - Added `wait_timeout` and `stop` to `RobloxStudioProcess`, so that a script that never finishes can no longer leave Roblox Studio running forever.
 - Added `--background` and `--timeout` options to the CLI.
 
+### Fixed
+
+- Fixed `RobloxStudioPaths::new` not finding Roblox Studio in `~/Applications`, where the official installer puts it for users without administrator rights.
+
 ## `0.4.0` - October 3rd, 2026
 
 ### Added
