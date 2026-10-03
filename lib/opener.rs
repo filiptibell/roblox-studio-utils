@@ -1,11 +1,11 @@
 use std::{
     ffi::OsString,
-    fs, io,
+    fs,
     net::Ipv4Addr,
     path::{self, Path},
-    process::{Child, Command, Stdio},
 };
 
+use crate::launch::{self, Launch, RobloxStudioProcess};
 use crate::paths::RobloxStudioPaths;
 use crate::result::{RobloxStudioError, RobloxStudioResult};
 use crate::task::RobloxStudioTask;
@@ -23,9 +23,21 @@ pub struct RobloxStudioOpener {
     task: Option<RobloxStudioTask>,
     server_addr: Ipv4Addr,
     server_port: u16,
+    background: bool,
 }
 
 impl RobloxStudioOpener {
+    /**
+        Returns `true` if Roblox Studio can be opened in the background,
+        using `in_background`, on the current platform.
+
+        Currently, this is only supported on macOS.
+    */
+    #[must_use]
+    pub const fn supports_background() -> bool {
+        launch::SUPPORTS_BACKGROUND
+    }
+
     /**
         Create a new Roblox Studio opener.
     */
@@ -36,6 +48,7 @@ impl RobloxStudioOpener {
             task: None,
             server_addr: DEFAULT_SERVER_ADDR,
             server_port: DEFAULT_SERVER_PORT,
+            background: false,
         }
     }
 
@@ -108,6 +121,15 @@ impl RobloxStudioOpener {
             args.push(OsString::from(self.server_port.to_string()));
         }
         args
+    }
+
+    fn launch(&self) -> RobloxStudioResult<Launch> {
+        let paths = RobloxStudioPaths::new()?;
+        Ok(Launch {
+            exe: paths.exe_for_task(self.task).to_path_buf(),
+            args: self.launch_args(),
+            background: self.background,
+        })
     }
 
     /**
@@ -351,6 +373,32 @@ impl RobloxStudioOpener {
     }
 
     /**
+        Opens Roblox Studio in the background - it never activates, never shows
+        any of its windows, and never takes focus away from the user.
+
+        Roblox Studio stays hidden until the user shows it, for example by clicking its
+        icon in the Dock, which still appears while it runs. This is mostly useful
+        together with `run_script` and `quit_after_execution`, to run a script in
+        Roblox Studio without interrupting the user.
+
+        Note that any dialog that Roblox Studio shows, such as a login prompt, is also
+        hidden, and will wait for input until the user shows Roblox Studio.
+
+        On macOS, the system launches Roblox Studio in this mode, instead of the current
+        process. It does not inherit the environment variables of the current process,
+        and the handle that `spawn` returns can not know its exit status.
+
+        Opening Roblox Studio in the background is not supported on all platforms - use
+        `supports_background` to check. On unsupported platforms, `run` and `spawn`
+        return a `RobloxStudioError::BackgroundUnsupported` error.
+    */
+    #[must_use]
+    pub fn in_background(mut self) -> Self {
+        self.background = true;
+        self
+    }
+
+    /**
         Starts Roblox Studio with all of the given arguments,
         as a process that is detached from the current process.
 
@@ -362,16 +410,11 @@ impl RobloxStudioOpener {
 
         - If the Roblox Studio executable cannot be found.
         - If Roblox Studio is not supported on the current platform.
+        - If Roblox Studio can not be opened in the background on the current platform.
         - If the Roblox Studio process cannot be spawned.
     */
-    #[allow(clippy::zombie_processes)]
     pub fn run(self) -> RobloxStudioResult<()> {
-        let paths = RobloxStudioPaths::new()?;
-        let exe = paths.exe_for_task(self.task);
-
-        spawn_studio_process(exe, &self.launch_args())?;
-
-        Ok(())
+        self.launch()?.run()
     }
 
     /**
@@ -389,15 +432,11 @@ impl RobloxStudioOpener {
 
         - If the Roblox Studio executable cannot be found.
         - If Roblox Studio is not supported on the current platform.
+        - If Roblox Studio can not be opened in the background on the current platform.
         - If the Roblox Studio process cannot be spawned.
     */
-    pub fn spawn(self) -> RobloxStudioResult<Child> {
-        let paths = RobloxStudioPaths::new()?;
-        let exe = paths.exe_for_task(self.task);
-
-        let child = create_studio_command(exe, &self.launch_args()).spawn()?;
-
-        Ok(child)
+    pub fn spawn(self) -> RobloxStudioResult<RobloxStudioProcess> {
+        self.launch()?.spawn()
     }
 }
 
@@ -415,123 +454,4 @@ fn canonicalize_to_string(path: &Path) -> RobloxStudioResult<String> {
         .to_str()
         .ok_or_else(|| RobloxStudioError::PathToString(path_full.clone()))?;
     Ok(path_str.to_string())
-}
-
-fn create_studio_command(exe: &Path, args: &[OsString]) -> Command {
-    let mut cmd = Command::new(exe);
-    cmd.args(args);
-    cmd.stdin(Stdio::null());
-    cmd.stdout(Stdio::null());
-    cmd.stderr(Stdio::null());
-    cmd
-}
-
-#[cfg(not(target_os = "windows"))]
-#[allow(clippy::zombie_processes)]
-fn spawn_studio_process(exe: &Path, args: &[OsString]) -> RobloxStudioResult<()> {
-    let mut cmd = create_studio_command(exe, args);
-
-    /*
-        NOTE: Not waiting on the process here is intentional, we
-        are only trying to open Roblox Studio, not get its output,
-        and we intentionally don't want toolchain managers such as
-        Rokit/Aftman/Foreman to kill and clean up this process either
-    */
-    configure_detached_spawn(&mut cmd)?;
-
-    cmd.spawn()?;
-
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-#[allow(clippy::zombie_processes)]
-fn spawn_studio_process(exe: &Path, args: &[OsString]) -> RobloxStudioResult<()> {
-    /*
-        Windows process creation flags & job objects:
-
-        https://learn.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
-        https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
-    */
-
-    const DETACHED_PROCESS: u32 = 0x0000_0008;
-    const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-    const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
-
-    const WINDOWS_FLAGS_FULL: u32 =
-        DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB;
-    const WINDOWS_FLAGS_FALLBACK: u32 = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
-
-    /*
-        Break away from short-lived wrappers on Windows and
-        avoid tying Studio to the parent's console process group.
-
-        Some Windows parent processes run inside a job object that does not permit
-        `CREATE_BREAKAWAY_FROM_JOB`, which causes Studio launch to fail outright with
-        `ERROR_ACCESS_DENIED`. Retry without the breakaway flag so opening Studio still
-        works even when we cannot fully escape the parent job.
-    */
-    spawn_studio_process_with_flags(exe, args, WINDOWS_FLAGS_FULL).or_else(|error| match error {
-        RobloxStudioError::Io(io_error) if io_error.kind() == io::ErrorKind::PermissionDenied => {
-            spawn_studio_process_with_flags(exe, args, WINDOWS_FLAGS_FALLBACK)
-                .or_else(|_| spawn_studio_process_with_flags(exe, args, 0))
-        }
-        other => Err(other),
-    })
-}
-
-#[cfg(target_os = "windows")]
-#[allow(clippy::zombie_processes)]
-fn spawn_studio_process_with_flags(
-    exe: &Path,
-    args: &[OsString],
-    flags: u32,
-) -> RobloxStudioResult<()> {
-    let mut cmd = create_studio_command(exe, args);
-
-    configure_detached_spawn(&mut cmd, flags)?;
-
-    cmd.spawn()?;
-
-    Ok(())
-}
-
-#[cfg(target_family = "unix")]
-fn configure_detached_spawn(cmd: &mut Command) -> io::Result<()> {
-    use std::os::unix::process::CommandExt;
-
-    /*
-        Move Studio into a separate session so short-lived wrappers
-        and shell signals do not take it down with the parent process.
-
-        SAFETY: The closure only calls async-signal-safe `setsid` and returns
-        an OS error directly, which is the intended `pre_exec` usage.
-    */
-    unsafe {
-        cmd.pre_exec(|| {
-            if libc::setsid() == -1 {
-                Err(io::Error::last_os_error())
-            } else {
-                Ok(())
-            }
-        });
-    }
-
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn configure_detached_spawn(cmd: &mut Command, flags: u32) -> io::Result<()> {
-    use std::os::windows::process::CommandExt;
-
-    if flags != 0 {
-        cmd.creation_flags(flags);
-    }
-
-    Ok(())
-}
-
-#[cfg(not(any(target_family = "unix", target_os = "windows")))]
-fn configure_detached_spawn(_cmd: &mut Command) -> io::Result<()> {
-    Ok(())
 }

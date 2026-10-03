@@ -1,9 +1,7 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use anyhow::bail;
 use clap::Args;
-
-use roblox_studio_utils::RobloxStudioOpener;
 
 use crate::common::{CliResult, Context};
 
@@ -25,11 +23,17 @@ pub struct RunCommand {
     /// Close Roblox Studio after the script has finished, and wait for it to close.
     #[arg(long)]
     quit_after_execution: bool,
+    /// Stop Roblox Studio if it is still running after this many seconds.
+    #[arg(long, requires = "quit_after_execution")]
+    timeout: Option<f64>,
+    /// Seconds to give Roblox Studio to quit when stopping it, before it is killed.
+    #[arg(long, default_value_t = 15.0)]
+    grace: f64,
 }
 
 impl RunCommand {
     pub fn run(self, context: Context) -> CliResult {
-        let opener = RobloxStudioOpener::new();
+        let opener = context.opener();
         let mut opener = match (self.universe_id.zip(self.place_id), &self.file) {
             (Some((universe_id, place_id)), _) => {
                 opener.run_script_in_place(universe_id, place_id, &self.script_path)?
@@ -44,9 +48,23 @@ impl RunCommand {
 
         let script_path = self.script_path.display();
         if self.quit_after_execution {
-            let status = opener.quit_after_execution().spawn()?.wait()?;
-            if !status.success() {
-                bail!("Roblox Studio exited with {status}");
+            let mut process = opener.quit_after_execution().spawn()?;
+            let timeout = self.timeout.map(Duration::try_from_secs_f64).transpose()?;
+            let exit = match timeout {
+                Some(timeout) => process.wait_timeout(timeout)?,
+                None => Some(process.wait()?),
+            };
+            let exit = if let Some(exit) = exit {
+                exit
+            } else {
+                context.print("Roblox Studio timed out, stopping it.");
+                process.stop(Duration::try_from_secs_f64(self.grace)?)?
+            };
+            if exit.was_killed() {
+                bail!("Roblox Studio did not quit when asked to, and was killed");
+            }
+            if exit.success() == Some(false) {
+                bail!("Roblox Studio exited with {exit}");
             }
             context.print(format!("Roblox Studio finished running {script_path}."));
         } else {

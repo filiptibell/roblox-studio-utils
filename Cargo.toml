@@ -17,19 +17,6 @@ categories = [
 default = []
 cli = ["dep:anyhow", "dep:clap", "dep:serde", "dep:serde_json"]
 
-[dependencies]
-anyhow = { version = "1.0", optional = true }
-clap = { version = "4.5", features = ["derive"], optional = true }
-dirs = "6.0"
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-winreg = "0.55"
-
 [lib]
 path = "lib/lib.rs"
 
@@ -55,6 +42,10 @@ name = "run-script"
 path = "examples/run_script.rs"
 
 [[example]]
+name = "run-script-in-background"
+path = "examples/run_script_in_background.rs"
+
+[[example]]
 name = "start-client"
 path = "examples/start_client.rs"
 
@@ -76,3 +67,48 @@ module_name_repetitions = { level = "allow", priority = 1 }
 multiple_crate_versions = { level = "allow", priority = 1 }
 unreadable_literal = { level = "allow", priority = 1 }
 unnecessary_wraps = { level = "allow", priority = 1 }
+undocumented_unsafe_blocks = { level = "deny", priority = 1 }
+multiple_unsafe_ops_per_block = { level = "deny", priority = 1 }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[dependencies]
+anyhow = { version = "1.0", optional = true }
+clap = { version = "4.5", features = ["derive"], optional = true }
+dirs = "6.0"
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+
+# libc is used for process group manipulation and optionally for
+# listening to the exit of a backgrounded Roblox Studio app using
+# raw kqueue events, it is the only thing that seemingly works there
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# On macOS, we need certain system dependencies to properly and
+# fully force backgrounding of the Roblox Studio app when the user
+# passes in the optional "--background" CLI flag or library flag
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+    "std",
+    "block2",
+    "libc",
+    "NSRunningApplication",
+    "NSWorkspace",
+] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSArray",
+    "NSDictionary",
+    "NSError",
+    "NSString",
+    "NSURL",
+] }
+
+# On Windows, the location of the current Roblox Studio installation
+# is stored in a registry key (in "Software\Roblox\RobloxStudio")
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"

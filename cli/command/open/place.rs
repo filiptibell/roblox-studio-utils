@@ -1,7 +1,5 @@
 use clap::Args;
 
-use roblox_studio_utils::RobloxStudioOpener;
-
 use crate::common::{CliResult, Context};
 
 #[derive(Debug, Args)]
@@ -12,7 +10,8 @@ pub struct PlaceCommand {
 
 impl PlaceCommand {
     pub fn run(self, context: Context) -> CliResult {
-        RobloxStudioOpener::new()
+        context
+            .opener()
             .open_place(self.universe_id, self.place_id)
             .run()?;
 

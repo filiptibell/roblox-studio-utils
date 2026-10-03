@@ -13,6 +13,8 @@ pub enum RobloxStudioError {
     LocalDataDirCopyPlace(String),
     PathCanonicalize(String),
     PathToString(PathBuf),
+    BackgroundUnsupported,
+    BackgroundLaunch(String),
     Io(io::Error),
 }
 
@@ -35,6 +37,14 @@ impl fmt::Display for RobloxStudioError {
             RobloxStudioError::PathCanonicalize(s) => write!(f, "failed to canonicalize path: {s}"),
             RobloxStudioError::PathToString(p) => {
                 write!(f, "failed to convert path to string: {}", p.display())
+            }
+            RobloxStudioError::BackgroundUnsupported => write!(
+                f,
+                "opening roblox studio in the background is unsupported on platform: {}",
+                env::consts::OS
+            ),
+            RobloxStudioError::BackgroundLaunch(s) => {
+                write!(f, "failed to open roblox studio in the background: {s}")
             }
             RobloxStudioError::Io(e) => write!(f, "io error: {e}"),
         }

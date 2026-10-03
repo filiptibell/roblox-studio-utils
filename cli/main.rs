@@ -16,12 +16,15 @@ struct Cli {
     /// Suppress launch confirmation output.
     #[arg(short, long, global = true)]
     quiet: bool,
+    /// Open Roblox Studio in the background, without activating it or showing its windows.
+    #[arg(short, long, global = true)]
+    background: bool,
     #[command(subcommand)]
     command: Command,
 }
 
 fn main() -> CliResult {
     let cli = Cli::parse();
-    let context = Context::new(cli.quiet);
+    let context = Context::new(cli.quiet, cli.background);
     cli.command.run(context)
 }

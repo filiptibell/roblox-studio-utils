@@ -13,11 +13,21 @@ const DEFAULT_SERVER_PORT: u16 = 50608;
 #[derive(Debug, Clone, Copy)]
 pub struct Context {
     quiet: bool,
+    background: bool,
 }
 
 impl Context {
-    pub const fn new(quiet: bool) -> Self {
-        Self { quiet }
+    pub const fn new(quiet: bool, background: bool) -> Self {
+        Self { quiet, background }
+    }
+
+    pub fn opener(self) -> RobloxStudioOpener {
+        let opener = RobloxStudioOpener::new();
+        if self.background {
+            opener.in_background()
+        } else {
+            opener
+        }
     }
 
     pub fn print(self, message: impl Display) {

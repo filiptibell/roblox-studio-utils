@@ -2,8 +2,6 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use roblox_studio_utils::RobloxStudioOpener;
-
 use crate::common::{CliResult, Context, ServerOptions};
 
 #[derive(Debug, Args)]
@@ -17,7 +15,7 @@ impl ServerCommand {
     pub fn run(self, context: Context) -> CliResult {
         let endpoint = self.server.endpoint();
         self.server
-            .apply(RobloxStudioOpener::new())
+            .apply(context.opener())
             .start_server(&self.file_path)?
             .run()?;
 

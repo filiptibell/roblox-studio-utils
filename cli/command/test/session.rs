@@ -2,8 +2,6 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use roblox_studio_utils::RobloxStudioOpener;
-
 use crate::common::{CliResult, Context, ServerOptions};
 
 #[derive(Debug, Args)]
@@ -19,7 +17,7 @@ impl SessionCommand {
     pub fn run(self, context: Context) -> CliResult {
         let endpoint = self.server.endpoint();
         self.server
-            .apply(RobloxStudioOpener::new())
+            .apply(context.opener())
             .start_server_with_clients(&self.file_path, self.clients)?
             .run()?;
 

@@ -1,7 +1,5 @@
 use clap::Args;
 
-use roblox_studio_utils::RobloxStudioOpener;
-
 use crate::common::{CliResult, Context, ServerOptions};
 
 #[derive(Debug, Args)]
@@ -13,10 +11,7 @@ pub struct ClientCommand {
 impl ClientCommand {
     pub fn run(self, context: Context) -> CliResult {
         let endpoint = self.server.endpoint();
-        self.server
-            .apply(RobloxStudioOpener::new())
-            .start_client()
-            .run()?;
+        self.server.apply(context.opener()).start_client().run()?;
 
         context.print(format!(
             "Launched Roblox Studio test client for {endpoint}."
